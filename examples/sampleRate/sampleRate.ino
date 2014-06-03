@@ -1,12 +1,52 @@
+/************************************************************************/
+/*                                                                      */
+/*  sampleRate.ino  --  Sample Rate Demo                                */
+/*                                                                      */
+/************************************************************************/
+/*  Author:  William Esposito                                           */
+/*  Copyright 2013, Stanford University                                 */
+/************************************************************************/
 /*
-Sample rate will read in a signal in on channel IN0 and write it out on channels OUT0-OUT3 at various sample rates,
-representing Full speed, half speed, quarter speed, and one-eigth speed.
-This Demo is only compatible with the Arduino Uno and other AVR processors as it uses inline assembly.
-EE122A Stanford University
-W. Esposito
-V1.0 9/2013
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 */
-#include <analogShield.h>   //Include to use analog shied.
+/************************************************************************/
+/*  Module Description:                                                 */
+/*                                                                      */
+/*  Sample rate will read in a signal in on channel IN0 and write it    */
+/*  out on channels OUT0-OUT3 at various sample rates,representing Full */
+/*  speed, half speed, quarter speed, and one-eigth speed.              */
+/*                                                                      */
+/************************************************************************/
+/*  Revision History:                                                   */
+/*                                                                      */
+/*  09/01/2013 (W. Esposito): created                                   */
+/*  05/28/2014 (MWingerson): Updated for ChipKIT and release            */
+/*                                                                      */
+/************************************************************************/
+
+/************************************************************************/
+/*  Board Support:                                                      */
+/*                                                                      */
+/*      Arduino UNO                                                     */
+/*      ChipKIT UNO32                                                   */
+/*      ChipKit UC32                                                    */
+/*                                                                      */
+/************************************************************************/
+
+#include <analogShield.h>   //Include to use analog shield.
+#include <SPI.h>	//required for ChipKIT but does not affect Arduino
 
 void setup()
 {
@@ -18,7 +58,7 @@ unsigned int ucount0 = 0,ucount1 = 0,ucount2 = 0,ucount3 = 0;
 int indexSample = 0;
 void loop()
 {
-  cli();
+  noInterrupts();
   count = analog.read(0);
   ucount0 = count;  //every loop, update channel 0;
 
@@ -48,5 +88,5 @@ void loop()
   }
   analog.write(ucount0,ucount1,ucount2,ucount3, true);
   indexSample++;
-  sei();
+  interrupts();
 }
