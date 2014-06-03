@@ -1,36 +1,45 @@
+/************************************************************************/
+/*																		*/
+/*	analogShield.h	--	Library for Analog Shield	     	            */
+/*																		*/
+/************************************************************************/
+/*	Author: 	William J. Esposito										*/
+/*	Copyright 2014, Digilent Inc.										*/
+/************************************************************************/
 /*
-Support library for Texas Instruments Analog Shield
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
 
-Supports 4 channel ADC and DAC of Analog shield.
-It uses the SPI bus of the 
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
 
-Copyright 2013 William J. Esposito
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+/************************************************************************/
+/*  Module Description: 												*/
+/*																		*/
+/*	This module contains the implementation of the object class that	*/
+/*	forms a chipKIT/Aruino interface to the Analog Shield functions of  */
+/*  the Texas Instrument chipKit/arduino shield.						*/
+/*																		*/
+/*																		*/
+/************************************************************************/
+/*  Revision History:													*/
+/*																		*/
+/*	04/22/2014(WilliamE): Created										*/
+/*  05/27/2014(MarshallW): Modified for readability and content         */
+/*																		*/
+/************************************************************************/
 
-//code borrowed from SPI.h as well
-/*
- * Copyright (c) 2010 by Cristian Maglie <c.maglie@bug.st>
- * SPI Master library for arduino.
- *
- * This file is free software; you can redistribute it and/or modify
- * it under the terms of either the GNU General Public License version 2
- * or the GNU Lesser General Public License version 2.1, both as
- * published by the Free Software Foundation.
- */
+/* ------------------------------------------------------------ */
+/*				Include File Definitions						*/
+/* ------------------------------------------------------------ */
 #ifndef _analogShield_h_
 #define _analogShield_h_
 	#if defined(__AVR__)
@@ -39,6 +48,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		#include <Arduino.h>
 		#include <avr/pgmspace.h>
 			
+	#else //(__PIC32MX__)
+		#include <WProgram.h>
+		#include <inttypes.h>
+		#include <SPI.h>
+	
+	#endif
+
+	#if defined(__AVR__)
 		#define SPI_CLOCK_DIV4 0x00
 		#define SPI_CLOCK_DIV16 0x01
 		#define SPI_CLOCK_DIV64 0x02
@@ -58,6 +75,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		#define SPI_2XCLOCK_MASK 0x01  // SPI2X = bit 0 on SPSR
 
 	#endif
+		
+	#include <stdint.h>
 	
 	//pins
 	#define adccs		2
@@ -73,6 +92,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 		static void writeNoUpdate(int channel, unsigned int value);
 		static void writeAllUpdate(int channel, unsigned int value);
 		int shieldMode;
+		void setChannelAndModeByte(byte channel, bool mode);
 		
 	public:
 		analogShield();
