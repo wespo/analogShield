@@ -41,7 +41,7 @@
 /*				Include File Definitions						*/
 /* ------------------------------------------------------------ */
 
-#include "analogShield.h"
+#include <analogShield.h>
 analogShield analog;
 	
 /* ------------------------------------------------------------ */
