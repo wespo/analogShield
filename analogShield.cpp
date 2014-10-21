@@ -302,13 +302,16 @@ analogShield analog;
 		//make into an unsigned int for compatibility with the DAC used on the analog shield.
 		if(result < 0)
 		{
-			result &= 0x7FFFFFFF;
+			result = result >> 16;
+			result &= 0x7FFF;
 		}
 		else
 		{
-			result |= 0x80000000;
+			result = result >> 16;
+			result |= 0x8000;
 		}
-		return result>>16;
+
+		return result;
 		
 		#else //(__AVR__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
