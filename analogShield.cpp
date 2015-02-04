@@ -60,7 +60,35 @@ analogShield analog;
 **
 **
 */	
-	analogShield::analogShield() {
+    #if defined(__PIC32MX__)
+	analogShield::analogShield() : 
+		ADCCSSet(portOutputRegister(digitalPinToPort(adccs)) + 2), 
+		ADCCSClr(portOutputRegister(digitalPinToPort(adccs)) + 1), 
+		ADCCSPinMask(digitalPinToBitMask(adccs)),  
+		
+		syncPinSet(portOutputRegister(digitalPinToPort(syncPin)) + 2), 
+		syncPinClr(portOutputRegister(digitalPinToPort(syncPin)) + 1), 
+		syncPinPinMask(digitalPinToBitMask(syncPin)),
+		
+		ADCBusy(portOutputRegister(digitalPinToPort(adcbusy))), 
+		ADCBusyPinMask(digitalPinToBitMask(adcbusy)) {
+
+	#elif defined(__SAM3X8E__)
+	analogShield::analogShield() : 
+		ADCCSSet(portOutputRegister(digitalPinToPort(adccs))), 
+		SetADCCSPinMask(digitalPinToBitMask(adccs)), 
+		ClrADCCSPinMask(0hffffffff^(digitalPinToBitMask(adccs))),
+		
+		syncPinSet(portOutputRegister(digitalPinToPort(syncPin))), 
+		SetsyncPinPinMask(digitalPinToBitMask(syncPin)),
+		ClrsyncPinPinMask(0hffffffff^(digitalPinToBitMask(syncPin))),
+		
+		ADCBusy(portOutputRegister(digitalPinToPort(adcbusy))), 
+		ADCBusyPinMask(digitalPinToBitMask(adcbusy)) {
+
+	#elif defined(__AVR__)
+		analogShield::analogShield() {	
+	#endif
 	//initialize the ADC and DAC pins
 		//ADC pins
 		pinMode(adccs, OUTPUT);
@@ -99,7 +127,7 @@ analogShield analog;
 */
 	
 	void analogShield::begin(){
-	#if defined(__PIC32MX__)		
+	#if defined(__PIC32MX__) || defined(__SAM3X8E__)		 
 		SPI.begin();
 	#else //(__AVR__)
 	  // Set SS to high so a connected chip will be "deselected" by default
@@ -148,7 +176,7 @@ analogShield analog;
 **
 */	
 	void analogShield::end(){
-		#if defined(__PIC32MX__)
+		#if defined(__PIC32MX__) || defined (__SAM3X8E__)
 			SPI.end();
 		#else //(__AVR__)
 			SPCR &= ~_BV(SPE);
@@ -219,7 +247,7 @@ analogShield analog;
 		}
 		
 		
-		#if defined(__PIC32MX__)
+		#if defined(__PIC32MX__) || defined(__SAM3X8E__)
 
 		SPI.transfer(control);
 
@@ -264,6 +292,8 @@ analogShield analog;
 		if(shieldMode != 2){
 			#if defined (__PIC32MX__)
 				SPI.setDataMode(SPI_MODE3);
+			#elif defined (__SAM3X8E__)
+				SPI.setDataMode(SPI_MODE3);
 			#else //(__AVR__)
 				SPCR &= ~(_BV(DORD));
 				SPCR = (SPCR & ~SPI_MODE_MASK) | SPI_MODE3;
@@ -273,27 +303,44 @@ analogShield analog;
 			shieldMode = 2;
 		}
 		
-		#if defined (__PIC32MX__)
+		#if defined (__PIC32MX__) || (__SAM3X8E__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
-		digitalWrite(adccs,LOW);
+		
+		#if defined (__PIC32MX__)
+			*ADCCSClr = ADCCSPinMask;	//digitalWrite(adccs,LOW);
+		#elif defined (__SAM3X8E__)
+			*ADCCS &= ClrADCCSPinMask;
+		#endif
 		
 		setChannelAndModeByte(channel, mode);
 		
-		digitalWrite(adccs,HIGH);
+		#if defined (__PIC32MX__)
+		*ADCCSSet = ADCCSPinMask; 	//digitalWrite(adccs,HIGH);
+		#elif defined (__SAM3X8E__)
+			*ADCCS |= SetADCCSPinMask;
+		#endif
 		
 		//wait for busy signal to fall. If it lasts a while, try resending.
-		while(digitalRead(adcbusy) == 0); //wait for pin 3 to == 0
-
-		//Result ready. Read it in
-		digitalWrite(adccs,LOW);
-
+		//while(digitalRead(adcbusy) == 0); //wait for pin 3 to == 0
+		while(*ADCBusy & ADCBusyPinMask);
+		
+		#if defined (__PIC32MX__)
+			*ADCCSClr = ADCCSPinMask;	//digitalWrite(adccs,LOW);
+		#elif defined (__SAM3X8E__)
+			*ADCCS &= ClrADCCSPinMask;
+		#endif
+		
 		//collect data
 		byte high = SPI.transfer(0x00);
 		byte low = SPI.transfer(0x00);
 		
-		//release chip select
-		digitalWrite(adccs,HIGH);
-				
+		//release chip select		
+		#if defined (__PIC32MX__)
+		*ADCCSSet = ADCCSPinMask; 	//digitalWrite(adccs,HIGH);
+		#elif defined (__SAM3X8E__)
+			*ADCCS |= SetADCCSPinMask;
+		#endif
+		
 		//compile the result into a 32 bit integer.
 		int result;
 			result = (int)high<<24;
@@ -385,7 +432,7 @@ analogShield analog;
 	int analogShield::signedRead(int channel, bool mode) {
 		// initialize SPI:
 		if(shieldMode != 2){
-			#if defined (__PIC32MX__)
+			#if defined (__PIC32MX__) || defined (__SAM3X8E__)
 				SPI.setDataMode(SPI_MODE3);
 			#else //(__AVR__)
 				SPCR &= ~(_BV(DORD));
@@ -398,24 +445,40 @@ analogShield analog;
 		
 		#if defined (__PIC32MX__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
-		digitalWrite(adccs,LOW);
+		
+		#if defined (__PIC32MX__)
+			*ADCCSClr = ADCCSPinMask;	//digitalWrite(adccs,LOW);
+		#elif defined (__SAM3X8E__)
+			*ADCCS &= ClrADCCSPinMask;
+		#endif
 		
 		setChannelAndModeByte(channel, mode);
 		
-		digitalWrite(adccs,HIGH);
+		#if defined (__PIC32MX__)
+		*ADCCSSet = ADCCSPinMask; 	//digitalWrite(adccs,HIGH);
+		#elif defined (__SAM3X8E__)
+			*ADCCS |= SetADCCSPinMask;
+		#endif
 		
 		//wait for busy signal to fall. If it lasts a while, try resending.
 		while(digitalRead(adcbusy) == 0); //wait for pin 3 to == 0
 
-		//Result ready. Read it in
-		digitalWrite(adccs,LOW);
-
+		#if defined (__PIC32MX__)
+			*ADCCSClr = ADCCSPinMask;	//digitalWrite(adccs,LOW);
+		#elif defined (__SAM3X8E__)
+			*ADCCS &= ClrADCCSPinMask;
+		#endif
+		
 		//collect data
 		byte high = SPI.transfer(0x00);
 		byte low = SPI.transfer(0x00);
 		
-		//release chip select
-		digitalWrite(adccs,HIGH);
+		//release chip select		
+		#if defined (__PIC32MX__)
+			*ADCCSSet = ADCCSPinMask; 	//digitalWrite(adccs,HIGH);
+		#elif defined (__SAM3X8E__)
+			*ADCCS |= SetADCCSPinMask;
+		#endif
 		
 		#else //(__AVR__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
@@ -484,10 +547,12 @@ analogShield analog;
 		//prep work, break up the into into two 8 bit bytes
 		byte high = value >> 8;//highByte(value);
 		byte low = value & 0x00FF;//lowByte(value);
-
+	
+		// take the SS pin low to select the chip:
 		#if defined(__PIC32MX__)
-			// take the SS pin low to select the chip:
-			digitalWrite(syncPin,LOW);
+			*syncPinClr = syncPinPinMask;
+		#elif defined (__SAM3X8E__)
+			*syncPin &= ClrsyncPinPinMask;
 		#else
 			// take the SS pin low to select the chip:
 			PORTD &= B11011111;	//digitalWriteFast(5,LOW);
@@ -504,9 +569,8 @@ analogShield analog;
 		else if(channel == 3)
 			call = 0x06;
 		
-
 		//send command byte
-		#if defined(__PIC32MX__)
+		#if defined(__PIC32MX__) || (__SAM3X8E__)
 			SPI.transfer(call);
 		
 			//send data
@@ -514,7 +578,11 @@ analogShield analog;
 			SPI.transfer(low);
 			
 			// take the SS pin high to de-select the chip:
-			digitalWrite(syncPin,HIGH); 
+			#if defined(__PIC32MX__)
+				*syncPinSet = syncPinPinMask;
+			#elif defined (__SAM3X8E__)
+				*syncPin |= SetsyncPinPinMask;
+			#endif
 			
 		#else //(__AVR__)
 			SPDR = call;
@@ -559,10 +627,17 @@ analogShield analog;
 		//prep work, break up the into into two 8 bit bytes
 		byte high = value >> 8;//highByte(value);
 		byte low = value & 0x00FF;//lowByte(value);
-
+	
 		// take the SS pin low to select the chip:
-		digitalWrite(5,LOW);
-
+		#if defined(__PIC32MX__)
+			*syncPinClr = syncPinPinMask;
+		#elif defined (__SAM3X8E__)
+			*syncPin &= ClrsyncPinPinMask;
+		#else
+			// take the SS pin low to select the chip:
+			PORTD &= B11011111;	//digitalWriteFast(5,LOW);
+		#endif
+		
 		//  send in the address and value via SPI:
 		byte call = 0x20;//20
 		if(channel == 1)
@@ -583,7 +658,11 @@ analogShield analog;
 			SPI.transfer(low);
 			
 			// take the SS pin high to de-select the chip:
-			digitalWrite(syncPin,HIGH); 
+			#if defined(__PIC32MX__)
+				*syncPinSet = syncPinPinMask;
+			#elif defined (__SAM3X8E__)
+				*syncPin |= SetsyncPinPinMask;
+			#endif
 			
 		#else //(__AVR__)
 			SPDR = call;
@@ -628,7 +707,7 @@ analogShield analog;
 		if(shieldMode != 1)
 		{
 			// initialize SPI:
-			#if defined(__PIC32MX__)
+			#if defined(__PIC32MX__) || defined (__SAM3X8E__)
 				SPI.setBitOrder(MSBFIRST);
 				SPI.setDataMode(SPI_MODE1);
 				SPI.setClockDivider(SPI_CLOCK_DIV2);
@@ -645,7 +724,7 @@ analogShield analog;
 		byte high = value >> 8;//highByte(value);
 		byte low = value & 0x00FF;//lowByte(value);
 
-		#if defined(__PIC32MX__)
+		#if defined(__PIC32MX__) || (__SAM3X8E__)
 			// take the SS pin low to select the chip:
 			digitalWrite(syncPin,LOW);  
 			digitalWrite(ldacPin,LOW);
@@ -665,7 +744,7 @@ analogShield analog;
 		else if(channel == 3)
 			call = 0x16;
 		
-		#if defined(__PIC32MX__)
+		#if defined(__PIC32MX__) || (__SAM3X8E__)
 			//send command byte
 			SPI.transfer(call);
 
@@ -723,7 +802,7 @@ analogShield analog;
 		if(shieldMode != 1)
 		{
 			// initialize SPI:
-			#if defined (__PIC32MX__)
+			#if defined (__PIC32MX__) || (__SAM3X8E__)
 				SPI.setDataMode(SPI_MODE1);
 			
 			#else  (__AVR__)
@@ -772,7 +851,7 @@ analogShield analog;
 	void analogShield::write(unsigned int value0, unsigned int value1, unsigned int value2, bool simul){
 		if(shieldMode != 1){
 			// initialize SPI:
-			#if defined (__PIC32MX__)
+			#if defined (__PIC32MX__) || (__SAM3X8E__)
 				SPI.setDataMode(SPI_MODE1);
 			
 			#else  //(__AVR__)
@@ -827,7 +906,7 @@ analogShield analog;
 		if(shieldMode != 1)
 		{
 			// initialize SPI:
-			#if defined (__PIC32MX__)
+			#if defined (__PIC32MX__) || (__SAM3X8E__)
 				SPI.setDataMode(SPI_MODE1);
 			
 			#else  //(__AVR__)

@@ -48,7 +48,7 @@
         #include <inttypes.h>
         #include <SPI.h>
 
-	#elif defined(__AVR__)
+	#elif defined(__AVR__) || defined (__SAM3X8E__)
 		#include <stdio.h>
 		#include <Arduino.h>
 		#include <avr/pgmspace.h>
@@ -84,17 +84,43 @@
 	
 	#define syncPin		5
 	#define ldacPin		6
-	#define DIFF_MODE       true
+	#define DIFF_MODE   true
         
 	class analogShield {
 	private:
 		// SPI Configuration methods
-		static void writeNoUpdate(int channel, unsigned int value);
-		static void writeAllUpdate(int channel, unsigned int value);
+		void writeNoUpdate(int channel, unsigned int value);
+		void writeAllUpdate(int channel, unsigned int value);
 		int shieldMode;
 		void setChannelAndModeByte(byte channel, bool mode);
 		
 	public:
+	
+    #if defined(__PIC32MX__)
+		volatile uint32_t *ADCCSSet;
+		volatile uint32_t *ADCCSClr;
+		uint32_t ADCCSPinMask;
+	
+		volatile uint32_t *syncPinSet;
+		volatile uint32_t *syncPinClr;
+		uint32_t syncPinPinMask;
+	
+		volatile uint32_t *ADCBusy;
+		uint32_t ADCBusyPinMask;
+		
+	#elif defined(__SAM3X8E__)
+		volatile uint32_t *ADCCS;
+		uint32_t SetADCCSPinMask;
+		uint32_t ClrADCCSPinMask;
+	
+		volatile uint32_t *syncPin;
+		uint32_t SetsyncPinPinMask;
+		uint32_t ClrsyncPinPinMask;
+	
+		volatile uint32_t *ADCBusy;
+		uint32_t ADCBusyPinMask;
+	
+	#endif
 		analogShield();
 		unsigned int read(int channel, bool mode = false);
 		int signedRead(int channel, bool mode = false);
