@@ -48,10 +48,16 @@
         #include <inttypes.h>
         #include <SPI.h>
 
-	#elif defined(__AVR__) || defined (__SAM3X8E__)
+	#elif defined(__AVR__)
 		#include <stdio.h>
 		#include <Arduino.h>
 		#include <avr/pgmspace.h>
+		
+	#elif defined (__SAM3X8E__)
+		#include <stdio.h>
+		#include <Arduino.h>
+		#include <avr/pgmspace.h>
+        #include <SPI.h>
 
         //define some SPI configs
         #define SPI_CLOCK_DIV4 0x00
@@ -104,20 +110,28 @@
 		volatile uint32_t *syncPinSet;
 		volatile uint32_t *syncPinClr;
 		uint32_t syncPinPinMask;
+		
+		volatile uint32_t *ldacPinSet;
+		volatile uint32_t *ldacPinClr;
+		uint32_t ldacPinPinMask;
 	
-		volatile uint32_t *ADCBusy;
+		volatile uint32_t *ADCBusyPtr;
 		uint32_t ADCBusyPinMask;
 		
 	#elif defined(__SAM3X8E__)
-		volatile uint32_t *ADCCS;
+		volatile uint32_t *ADCCSPtr;
 		uint32_t SetADCCSPinMask;
 		uint32_t ClrADCCSPinMask;
 	
-		volatile uint32_t *syncPin;
+		volatile uint32_t *syncPinPtr;
 		uint32_t SetsyncPinPinMask;
 		uint32_t ClrsyncPinPinMask;
+		
+		volatile uint32_t *ldacPinPtr;
+		uint32_t SetldacPinPinMask;
+		uint32_t ClrldacPinPinMask;
 	
-		volatile uint32_t *ADCBusy;
+		volatile uint32_t *ADCBusyPtr;
 		uint32_t ADCBusyPinMask;
 	
 	#endif
