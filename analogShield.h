@@ -1,6 +1,7 @@
 /************************************************************************/
 /*																		*/
-/*	analogShield.h	--	Library for Analog Shield	     	            */
+/*	analogShield.h	--	Library for Analog Shield                       */
+/*     Version - 2.1                                                    */
 /*																		*/
 /************************************************************************/
 /*	Author: 	William J. Esposito										*/
@@ -34,6 +35,10 @@
 /*																		*/
 /*	04/22/2014(WilliamE): Created										*/
 /*  05/27/2014(MarshallW): Modified for readability and content         */
+/*  02/16/2015(MarshallW): ChipKIT Efficiency update!                   */
+/*																		*/
+/*  Todo:                                                               */
+/*    - Framework for DUE added but not tested                          */
 /*																		*/
 /************************************************************************/
 
