@@ -1,6 +1,7 @@
 /************************************************************************/
 /*																		*/
-/*	analogShield.h	--	Library for Analog Shield	     	            */
+/*	analogShield.h	--	Library for Analog Shield                       */
+/*     Version - 2.1                                                    */
 /*																		*/
 /************************************************************************/
 /*	Author: 	William J. Esposito										*/
@@ -34,6 +35,10 @@
 /*																		*/
 /*	04/22/2014(WilliamE): Created										*/
 /*  05/27/2014(MarshallW): Modified for readability and content         */
+/*  02/16/2015(MarshallW): ChipKIT Efficiency update!                   */
+/*																		*/
+/*  Todo:                                                               */
+/*    - Framework for DUE added but not tested                          */
 /*																		*/
 /************************************************************************/
 
@@ -42,38 +47,44 @@
 /* ------------------------------------------------------------ */
 #ifndef _analogShield_h_
 #define _analogShield_h_
-	#if defined(__AVR__)
-	
+
+    #if defined(__PIC32MX__)
+        #include <WProgram.h>
+        #include <inttypes.h>
+        #include <SPI.h>
+
+	#elif defined(__AVR__)
 		#include <stdio.h>
 		#include <Arduino.h>
 		#include <avr/pgmspace.h>
-			
-	#else //(__PIC32MX__)
-		#include <WProgram.h>
-		#include <inttypes.h>
-		#include <SPI.h>
-	
-	#endif
+		
+	#elif defined (__SAM3X8E__)
+		#include <stdio.h>
+		#include <Arduino.h>
+		#include <avr/pgmspace.h>
+        #include <SPI.h>
 
-	#if defined(__AVR__)
-		#define SPI_CLOCK_DIV4 0x00
-		#define SPI_CLOCK_DIV16 0x01
-		#define SPI_CLOCK_DIV64 0x02
-		#define SPI_CLOCK_DIV128 0x03
-		#define SPI_CLOCK_DIV2 0x04
-		#define SPI_CLOCK_DIV8 0x05
-		#define SPI_CLOCK_DIV32 0x06
-		//#define SPI_CLOCK_DIV64 0x07
+        //define some SPI configs
+        #define SPI_CLOCK_DIV4 0x00
+        #define SPI_CLOCK_DIV16 0x01
+        #define SPI_CLOCK_DIV64 0x02
+        #define SPI_CLOCK_DIV128 0x03
+        #define SPI_CLOCK_DIV2 0x04
+        #define SPI_CLOCK_DIV8 0x05
+        #define SPI_CLOCK_DIV32 0x06
+        //#define SPI_CLOCK_DIV64 0x07
 
-		#define SPI_MODE0 0x00
-		#define SPI_MODE1 0x04
-		#define SPI_MODE2 0x08
-		#define SPI_MODE3 0x0C
+        #define SPI_MODE0 0x00
+        #define SPI_MODE1 0x04
+        #define SPI_MODE2 0x08
+        #define SPI_MODE3 0x0C
 
-		#define SPI_MODE_MASK 0x0C  // CPOL = bit 3, CPHA = bit 2 on SPCR
-		#define SPI_CLOCK_MASK 0x03  // SPR1 = bit 1, SPR0 = bit 0 on SPCR
-		#define SPI_2XCLOCK_MASK 0x01  // SPI2X = bit 0 on SPSR
+        #define SPI_MODE_MASK 0x0C  // CPOL = bit 3, CPHA = bit 2 on SPCR
+        #define SPI_CLOCK_MASK 0x03  // SPR1 = bit 1, SPR0 = bit 0 on SPCR
+        #define SPI_2XCLOCK_MASK 0x01  // SPI2X = bit 0 on SPSR
 
+	#else //throw error
+        #error "Incorrect processor type selected"
 	#endif
 		
 	#include <stdint.h>
@@ -84,17 +95,51 @@
 	
 	#define syncPin		5
 	#define ldacPin		6
-	#define DIFF_MODE       true
+	#define DIFF_MODE   true
         
 	class analogShield {
 	private:
 		// SPI Configuration methods
-		static void writeNoUpdate(int channel, unsigned int value);
-		static void writeAllUpdate(int channel, unsigned int value);
+		void writeNoUpdate(int channel, unsigned int value);
+		void writeAllUpdate(int channel, unsigned int value);
 		int shieldMode;
 		void setChannelAndModeByte(byte channel, bool mode);
 		
 	public:
+	
+    #if defined(__PIC32MX__)
+		volatile uint32_t *ADCCSSet;
+		volatile uint32_t *ADCCSClr;
+		uint32_t ADCCSPinMask;
+	
+		volatile uint32_t *syncPinSet;
+		volatile uint32_t *syncPinClr;
+		uint32_t syncPinPinMask;
+		
+		volatile uint32_t *ldacPinSet;
+		volatile uint32_t *ldacPinClr;
+		uint32_t ldacPinPinMask;
+	
+		volatile uint32_t *ADCBusyPtr;
+		uint32_t ADCBusyPinMask;
+		
+	#elif defined(__SAM3X8E__)
+		volatile uint32_t *ADCCSPtr;
+		uint32_t SetADCCSPinMask;
+		uint32_t ClrADCCSPinMask;
+	
+		volatile uint32_t *syncPinPtr;
+		uint32_t SetsyncPinPinMask;
+		uint32_t ClrsyncPinPinMask;
+		
+		volatile uint32_t *ldacPinPtr;
+		uint32_t SetldacPinPinMask;
+		uint32_t ClrldacPinPinMask;
+	
+		volatile uint32_t *ADCBusyPtr;
+		uint32_t ADCBusyPinMask;
+	
+	#endif
 		analogShield();
 		unsigned int read(int channel, bool mode = false);
 		int signedRead(int channel, bool mode = false);
