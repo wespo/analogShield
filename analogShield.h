@@ -36,6 +36,7 @@
 /*	04/22/2014(WilliamE): Created										*/
 /*  05/27/2014(MarshallW): Modified for readability and content         */
 /*  02/16/2015(MarshallW): ChipKIT Efficiency update!                   */
+/*  03/23/2015(WilliamE): Mega 2560 Support		                    	*/
 /*																		*/
 /*  Todo:                                                               */
 /*    - Framework for DUE added but not tested                          */
@@ -57,7 +58,8 @@
 		#include <stdio.h>
 		#include <Arduino.h>
 		#include <avr/pgmspace.h>
-		
+		#include <SPI.h>
+
 	#elif defined (__SAM3X8E__)
 		#include <stdio.h>
 		#include <Arduino.h>

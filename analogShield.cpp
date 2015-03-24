@@ -36,6 +36,7 @@
 /*	04/22/2014(WilliamE): Created										*/
 /*  05/27/2014(MarshallW): Modified for readability and content         */
 /*  02/16/2015(MarshallW): ChipKIT Efficiency update!                   */
+/*  03/23/2015(WilliamE): Mega 2560 Support		                    	*/
 /*																		*/
 /*  Todo:                                                               */
 /*    - Framework for DUE added but not tested                          */
@@ -373,7 +374,48 @@ analogShield analog;
 		}
 
 		return result;
+		#elif defined(__AVR_ATmega2560__)
+		PORTE &= B11101111;	//digitalWriteFast(adccs,LOW);
 		
+		setChannelAndModeByte(channel, mode);
+		
+		PORTE |= B00010000;	//digitalWriteFast(adccs,HIGH);
+		
+		//wait for busy signal to fall. If it lasts a while, try resending.
+		while((PINE & B00100000) == 0); //wait for pin 3 to == 0
+
+		//Result ready. Read it in
+		PORTE &= B11101111;	//digitalWriteFast(adccs,LOW);
+
+		//collect data
+		SPDR = 0;
+		while (!(SPSR & _BV(SPIF)));
+		byte high = SPDR;
+		SPDR = 0;
+		while (!(SPSR & _BV(SPIF)));
+		byte low = SPDR;
+		
+		//release chip select
+		PORTE |= B00010000;	//digitalWriteFast(adccs,HIGH);
+		
+		//compile the result into a 16 bit integer.
+		int result;
+		//result = (int)word(high, low);
+		result = (int)high<<8;
+		result+= low;
+		
+		//make into an unsigned int for compatibility with the DAC used on the analog shield.
+		if(result < 0)
+		{
+			result &= 0x7FFF;
+		}
+		else
+		{
+			result |= 0x8000;
+		}
+		return result;
+
+
 		#else //(__AVR__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
 		PORTD &= B11111011;	//digitalWriteFast(adccs,LOW);
@@ -493,7 +535,34 @@ analogShield analog;
 		#elif defined (__SAM3X8E__)
 			*ADCCSPtr |= SetADCCSPinMask;
 		#endif
+
+
+		#elif defined(__AVR_ATmega2560__)
+		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
+		PORTE &= B11101111;	//digitalWriteFast(adccs,LOW);
 		
+		setChannelAndModeByte(channel, mode);
+		
+		PORTE |= B00010000;	//digitalWriteFast(adccs,HIGH);
+		
+		//wait for busy signal to fall. If it lasts a while, try resending.
+		while((PIND & B00001000) == 0); //wait for pin 3 to == 0
+
+		//Result ready. Read it in
+		PORTE &= B11101111;	//digitalWriteFast(adccs,LOW);
+
+		//collect data
+		SPDR = 0;
+		while (!(SPSR & _BV(SPIF)));
+		byte high = SPDR;
+		SPDR = 0;
+		while (!(SPSR & _BV(SPIF)));
+		byte low = SPDR;
+		
+		//release chip select
+		PORTE |= B00010000;	//digitalWriteFast(adccs,HIGH);
+
+
 		#else //(__AVR__)
 		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
 		PORTD &= B11111011;	//digitalWriteFast(adccs,LOW);
@@ -567,6 +636,8 @@ analogShield analog;
 			*syncPinClr = syncPinPinMask;
 		#elif defined (__SAM3X8E__)
 			*syncPinPtr &= ClrsyncPinPinMask;
+		#elif defined(__AVR_ATmega2560__)
+			PORTE &= B11110111;	//digitalWriteFast(5,LOW);
 		#else
 			// take the SS pin low to select the chip:
 			PORTD &= B11011111;	//digitalWriteFast(5,LOW);
@@ -607,9 +678,12 @@ analogShield analog;
 			while (!(SPSR & _BV(SPIF)));
 			SPDR = low;
 			while (!(SPSR & _BV(SPIF)));
-				
-			// take the SS pin high to de-select the chip:
-			PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			#if defined(__AVR_ATmega2560__)
+				PORTE |= B00001000;	//digitalWriteFast(5,LOW);
+			#else
+				// take the SS pin high to de-select the chip:
+				PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			#endif
 		#endif
 	
 	}
@@ -647,6 +721,8 @@ analogShield analog;
 			*syncPinClr = syncPinPinMask;
 		#elif defined (__SAM3X8E__)
 			*syncPinPtr &= ClrsyncPinPinMask;
+		#elif defined(__AVR_ATmega2560__)
+				PORTE &= B11110111;	//digitalWriteFast(5,LOW);
 		#else
 			// take the SS pin low to select the chip:
 			PORTD &= B11011111;	//digitalWriteFast(5,LOW);
@@ -687,9 +763,13 @@ analogShield analog;
 			while (!(SPSR & _BV(SPIF)));
 			SPDR = low;
 			while (!(SPSR & _BV(SPIF)));
-				
-			// take the SS pin high to de-select the chip:
-			PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			
+			#if defined(__AVR_ATmega2560__)
+				PORTE |= B00001000;	//digitalWriteFast(5,LOW);
+			#else
+				// take the SS pin high to de-select the chip:
+				PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			#endif
 		#endif
 	}
 
@@ -745,6 +825,8 @@ analogShield analog;
 		#elif defined (__SAM3X8E__)
 			*syncPinPtr &= ClrsyncPinPinMask;
 			*ldacPinPtr &= ClrldacPinPinMask;
+		#elif defined(__AVR_ATmega2560__)
+			PORTE &= B11110111;	//digitalWriteFast(5,LOW);
 		#else
 			// take the SS pin low to select the chip:
 			PORTD &= B11011111;	//digitalWriteFast(5,LOW);
@@ -788,8 +870,12 @@ analogShield analog;
 			while (!(SPSR & _BV(SPIF)));
 			SPDR = low;
 			while (!(SPSR & _BV(SPIF)));
-			// take the SS pin high to de-select the chip:
-			PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			#if defined(__AVR_ATmega2560__)
+				PORTE |= B00001000;	//digitalWriteFast(5,LOW);
+			#else
+				// take the SS pin high to de-select the chip:
+				PORTD |= B00100000;	////digitalWriteFast(5,HIGH);  
+			#endif
 			//end();
 		#endif
 	}
