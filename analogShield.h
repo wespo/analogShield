@@ -52,18 +52,35 @@
 	#define adccs		2
 	#define adcbusy		3
 	
-	#define syncPin		5
-	#define ldacPin		6
+	#define daccs		5
+	#define dacld		6
 	#define DIFF_MODE   true
-        
+    
+  	struct analogShieldPins //structure to handle analog shield CS Pins TRUE = IO EXPANDER FALSE = HW GPIO JUMPER
+  	{
+		int adccsPin;
+		int adcbusyPin;
+		int daccsPin;
+		int dacldPin;
+  	};
+
 	class analogShield {
 	private:
 		// SPI Configuration methods
 		void writeNoUpdate(int channel, unsigned int value);
 		void writeAllUpdate(int channel, unsigned int value);
-		int shieldMode;
 		void setChannelAndModeByte(int channel, bool mode);
-		
+		int configureShieldMode(int mode);
+		void configureShieldPins();
+		int identifyPin();
+		int verifyPin(int expanderPin, int gpioPin);
+		int testPin(int expanderPin, int gpioPin);
+		int findPin(int expanderPin);
+		int shieldPinReadWrite(int pin, int value = 0);
+
+		analogShieldPins shieldPins;
+		int shieldMode;
+
 	public:
 		analogShield();
 		unsigned int read(int channel, bool mode = false);
@@ -72,6 +89,8 @@
 		void write(unsigned int value0, unsigned int value1, bool simul); //channels 0 and 1
 		void write(unsigned int value0, unsigned int value1, unsigned int value2, bool simul); //channels 0-3
 		void write(unsigned int value0, unsigned int value1, unsigned int value2, unsigned int value3, bool simul); //all channels
+		void configureShieldPin(int shieldPin, int gpioPin);
+		void printConfig();
 		static void begin(); // Default
 		static void end();		
 };

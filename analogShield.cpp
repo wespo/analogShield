@@ -55,24 +55,20 @@ analogShield analog;
 **
 **        Description:
 **			Default constructor that sets the tristate buffers
-**			for the ADC and DAC control pins 
+**			for the ADC and DAC control shieldPins 
 **
 **
 */	
     analogShield::analogShield() {	
 		//Initialize Private Variables
 		shieldMode = 0;
-		//Set up DSP Shield SPI Bus
-		//begin();
-		
-		digitalWrite(ARD_SPI_EN, HIGH);
-		digitalWrite(adccs, HIGH);
-		digitalWrite(syncPin,HIGH);  
-		digitalWrite(ldacPin,LOW);
 
-		SPI.setBitOrder(MSBFIRST);
-    	SPI.setDataMode(SPI_MODE1);
-    	SPI.setClockDivider(SPI_CLOCK_DIV2);
+		//default shieldPins
+		shieldPins.adccsPin = adccs;
+		shieldPins.adcbusyPin = adcbusy;
+		shieldPins.daccsPin = daccs;
+		shieldPins.dacldPin = dacld;
+
 		SPI.begin();
 	}
 
@@ -97,12 +93,34 @@ analogShield analog;
 */
 	
 	void analogShield::begin(){
-		pinMode(ARD_SPI_EN, OUTPUT);
-		pinMode(adccs, OUTPUT);
-		pinMode(adcbusy, INPUT);
-		pinMode(syncPin, OUTPUT);
-		pinMode(ldacPin, OUTPUT);
-	
+
+		analog.configureShieldPins();
+	    //gpioPinMode(DSP_GPIO13, OUTPUT);
+		
+		//digitalWrite(ARD_SPI_EN, HIGH);
+		// digitalWrite(adccs, HIGH);
+		// digitalWrite(daccs,HIGH);    
+		// digitalWrite(dacld,LOW);
+
+		//pinMode(ARD_SPI_EN, OUTPUT);
+		// pinMode(adccs, OUTPUT);
+		// pinMode(adcbusy, INPUT);
+		// pinMode(daccs, INPUT);
+		// pinMode(dacld, OUTPUT);
+
+		// gpioPinMode(DSP_GPIO13, OUTPUT); //DACCS
+		// gpioWrite(DSP_GPIO13, HIGH);
+
+		// gpioPinMode(DSP_GPIO14, OUTPUT); //ADCCS
+		// gpioPinMode(DSP_GPIO12, INPUT);  //ADCBUSY
+		
+
+ 		/* Initialize DSP SPI peripheral */
+ 		SPI.setLoopBackMode(0);
+	    // SPI.setBitOrder(MSBFIRST);
+     // 	SPI.setDataMode(SPI_MODE2);
+     // 	SPI.setClockDivider(SPI_CLOCK_DIV128);
+    
 	}
 
 	
@@ -191,6 +209,7 @@ analogShield analog;
 		else{
 			control = control | 0x04; //B00000100
 		}
+		control = 0x96;
 		SPI.write(&control, 1);
 
 		return;
@@ -228,6 +247,7 @@ analogShield analog;
 		int result = signedRead(channel, mode);
 		
 		//make into an unsigned int for compatibility with the DAC used on the analog shield.
+		
 		if(result < 0)
 		{
 			result &= 0x7FFF;
@@ -236,7 +256,7 @@ analogShield analog;
 		{
 			result |= 0x8000;
 		}
-		return result;
+		return (unsigned int) result;
 
 	}
 
@@ -266,38 +286,63 @@ analogShield analog;
 */		
 	int analogShield::signedRead(int channel, bool mode) {
 		// initialize SPI:
-		if(shieldMode != 2){
-			SPI.setDataMode(SPI_MODE3);
-			shieldMode = 2;
-		}
+		configureShieldMode(2);
 		
-		// take the SS pin low to select the chip, transfer the command, then bring the bit back high:
-		digitalWrite(adccs,LOW);
-		
+		// take the SS shieldPin low to select the chip, transfer the command, then bring the bit back high:
+		//shieldPinReadWrite(adccs, LOW);
+
 		setChannelAndModeByte(channel, mode);
 		
-		//digitalWrite(adccs,HIGH);
+		//shieldPinReadWrite(adccs, HIGH);
 		
-		//wait for busy signal to fall. If it lasts a while, try resending.
-		while(digitalRead(adcbusy) == 1){} //wait for pin 3 to == 0
+		delayMicroseconds(10);
+
+		// //wait for busy signal to fall. If it lasts a while, try resending.
+		unsigned long count = 0;
+		// while(shieldPinReadWrite(adcbusy) == 0){
+		// 	if (count > 1000)
+		// 	{
+		// 		xfOn();
+		// 		break;
+		// 		// shieldPinReadWrite(adccs, HIGH);
+		// 		// return 0;
+		// 	}
+		// 	count++;
+		// } //wait for shieldPin 3 to == 0
+
+		// if(count < 1000) //if read didn't time out.
+		// {
+		// 	count = 0;
+			while(shieldPinReadWrite(adcbusy) == 1){
+				if (count > 100)
+				{
+					//shieldPinReadWrite(adccs, HIGH);
+					//return 0;
+
+					xfOn();
+					break;
+				}
+				count++;
+			} //wait for shieldPin 3 to == 0
+		//}
+		// else
+		// {
+		// 	xfOff();
+		// }
 
 		//Result ready. Read it in
-		//digitalWrite(adccs,LOW);
+		//shieldPinReadWrite(adccs, LOW);
 
 		//collect data
 		unsigned int readValue[2] = {};
 		SPI.read(readValue, 2);
-		
+
 		//release chip select
-		digitalWrite(adccs,HIGH);
+		//shieldPinReadWrite(adccs, HIGH);
 		
 		//compile the result into a 16 bit integer.
-		int result;
-		//result = (int)word(high, low);
-		result = readValue[1]<<8;
-		result+= readValue[0];
-		
-		//make into an unsigned int for compatibility with the DAC used on the analog shield.
+		int result = (((readValue[0]) << 8) | ((readValue[1] & 0x00FF)<<0));
+		delayMicroseconds(10);
 		return result;
 	}
 
@@ -329,8 +374,8 @@ analogShield analog;
 **
 */	
 	void analogShield::writeNoUpdate(int channel, unsigned int value){
-		// take the SS pin low to select the chip:
-		digitalWrite(syncPin,LOW);
+		// take the SS shieldPin low to select the chip:
+		shieldPinReadWrite(daccs, LOW);
 		
 		//  send in the address and value via SPI:
 		unsigned int call = 0x00;//00
@@ -346,7 +391,7 @@ analogShield analog;
 
 		unsigned int message[3] = { call, value >> 8, value & 0x00FF};
   		SPI.write(message, 3);
-		digitalWrite(syncPin,HIGH);  
+		shieldPinReadWrite(daccs, HIGH);
 	}
 
 /* ------------------------------------------------------------ */
@@ -373,8 +418,8 @@ analogShield analog;
 **
 */	
 	void analogShield::writeAllUpdate(int channel, unsigned int value){
-		// take the SS pin low to select the chip:
-		digitalWrite(syncPin,LOW);
+		// take the SS shieldPin low to select the chip:
+		shieldPinReadWrite(daccs, LOW);
 		
 		//  send in the address and value via SPI:
 		unsigned int call = 0x20;//20
@@ -390,8 +435,8 @@ analogShield analog;
 		unsigned int message[3] = { call, value >> 8, value & 0x00FF};
   		SPI.write(message, 3);
 		
-		// take the SS pin high to de-select the chip:
-		digitalWrite(syncPin,HIGH);  
+		// take the SS shieldPin high to de-select the chip:
+		shieldPinReadWrite(daccs, HIGH);
 
 	}
 
@@ -419,34 +464,31 @@ analogShield analog;
 **
 */	
 	void analogShield::write(int channel, unsigned int value) {
-
-		if(shieldMode != 1)
-		{
-			// initialize SPI:
-			SPI.setBitOrder(MSBFIRST);
-			SPI.setDataMode(SPI_MODE1);
-			SPI.setClockDivider(SPI_CLOCK_DIV2);
-			shieldMode = 1;
-		}
+		configureShieldMode(1);
 	  
-		// take the SS pin low to select the chip:
-		digitalWrite(syncPin,LOW);
-				
+		// take the SS shieldPin low to select the chip:
+		shieldPinReadWrite(daccs, LOW);
+
 		//  send in the address and value via SPI:
 		unsigned int call = 0x10;
 		if(channel == 1)
+		{
 			call = 0x12;
-		
+		}
 		else if(channel == 2)
+		{
 			call = 0x14;
-		
+		}
 		else if(channel == 3)
+		{
 			call = 0x16;
-		
+		}
+
 		unsigned int message[3] = { call, value >> 8, value & 0x00FF};
   		SPI.write(message, 3);
-		// take the SS pin high to de-select the chip:
-		digitalWrite(syncPin,HIGH);  
+
+		// take the SS shieldPin high to de-select the chip:
+		shieldPinReadWrite(daccs, HIGH);
 	}
 
 /* ------------------------------------------------------------ */
@@ -477,12 +519,7 @@ analogShield analog;
 */	
 	
 	void analogShield::write(unsigned int value0, unsigned int value1, bool simul){
-		if(shieldMode != 1)
-		{
-			// initialize SPI:
-			SPI.setDataMode(SPI_MODE1);
-			shieldMode = 1;
-		}
+		configureShieldMode(1);
 		
 		writeNoUpdate(0,value0);
 		writeAllUpdate(1,value1);
@@ -519,11 +556,7 @@ analogShield analog;
 **
 */		
 	void analogShield::write(unsigned int value0, unsigned int value1, unsigned int value2, bool simul){
-		if(shieldMode != 1){
-			// initialize SPI:
-			SPI.setDataMode(SPI_MODE1);
-			shieldMode = 1;
-		}
+		configureShieldMode(1);
 		
 		writeNoUpdate(0,value0);
 		writeNoUpdate(1,value1);
@@ -565,14 +598,242 @@ analogShield analog;
 **
 */		
 	void analogShield::write(unsigned int value0, unsigned int value1, unsigned int value2, unsigned int value3, bool simul){
-		if(shieldMode != 1){
-			// initialize SPI:
-			SPI.setDataMode(SPI_MODE1);
-			shieldMode = 1;
-		}
+		configureShieldMode(1);
 		
 		writeNoUpdate(0,value0);
 		writeNoUpdate(1,value1);
 		writeAllUpdate(2,value2);
 		writeAllUpdate(3,value3);
 	}
+
+
+int analogShield::configureShieldMode(int mode)
+{
+	if(mode == 1) //for DAC
+	{
+		if(shieldMode != 1){
+			// initialize SPI:
+			SPI.setBitOrder(MSBFIRST);
+			SPI.setDataMode(SPI_MODE2);
+			SPI.setClockDivider(SPI_CLOCK_DIV8);
+			shieldMode = 1;
+			return 1; //changed mode
+		}
+		return 0; //no change
+	}
+	else if(mode == 2) //for ADC
+	{
+		if(shieldMode != 2){
+			SPI.setBitOrder(MSBFIRST);
+			SPI.setDataMode(SPI_MODE3);
+			SPI.setClockDivider(SPI_CLOCK_DIV8);
+			shieldMode = 2;
+			return 1; //changed mode
+		}
+		return 0; //no change
+	}
+	else
+	{
+		return -1; //invalid mode
+	}
+
+}
+// configure pin to 0 to go back to using expander
+void analogShield::configureShieldPin(int shieldPin, int gpioPin)
+{
+	switch (shieldPin) {
+		case adccs:
+			shieldPins.adccsPin = gpioPin;
+			break;
+		case adcbusy:
+			shieldPins.adcbusyPin = gpioPin;
+			break;
+		case daccs:
+			shieldPins.daccsPin = gpioPin;
+			break;
+		case dacld:
+			shieldPins.dacldPin = gpioPin;
+			break;
+	}
+
+}
+void analogShield::configureShieldPins()
+{
+	
+	//SPI BUS CONNECT
+	pinMode(SPI_RX_SEL, OUTPUT);
+    pinMode(ARD_SPI_EN, OUTPUT);
+    digitalWrite(SPI_RX_SEL, LOW);
+    digitalWrite(ARD_SPI_EN, HIGH);
+
+	//identify shieldPins
+	shieldPins.adccsPin = findPin(adccs);
+	shieldPins.adcbusyPin = findPin(adcbusy);
+	shieldPins.daccsPin = findPin(daccs);
+	shieldPins.dacldPin = findPin(dacld);
+
+	//configure shieldPins
+	if(shieldPins.adccsPin == 0) //using expander
+	{
+		digitalWrite(adccs, HIGH);
+		pinMode(adccs, OUTPUT);
+	}
+	else
+	{
+		pinMode(adccs, INPUT);
+		gpioPinMode(shieldPins.adccsPin, OUTPUT);
+		gpioWrite(shieldPins.adccsPin, HIGH);
+	}
+
+	if(shieldPins.adcbusyPin == 0) //using expander
+	{
+		//digitalWrite(adcbusy, LOW);
+		pinMode(adcbusy, INPUT);
+	}
+	else
+	{
+		pinMode(adcbusy, INPUT);
+		gpioPinMode(shieldPins.adcbusyPin, INPUT);
+	}
+
+	if(shieldPins.daccsPin == 0) //using expander
+	{
+		digitalWrite(daccs, HIGH);
+		pinMode(daccs, OUTPUT);
+	}
+	else
+	{
+		pinMode(daccs, INPUT);
+		gpioPinMode(shieldPins.daccsPin, OUTPUT);
+		gpioWrite(shieldPins.daccsPin, HIGH);
+	}	
+
+	if(shieldPins.dacldPin == 0) //using expander
+	{
+		digitalWrite(dacld, LOW);
+		pinMode(dacld, OUTPUT);
+	}
+	else
+	{
+		pinMode(dacld, INPUT);
+		gpioPinMode(shieldPins.dacldPin, OUTPUT);
+		gpioWrite(shieldPins.dacldPin, LOW);
+	}	
+}
+
+void analogShield::printConfig()
+{
+	Serial.println("Pins: ");
+	Serial.print("ADCCS: ");
+	Serial.println(shieldPins.adccsPin);
+	Serial.print("ADCBUSY: ");
+	Serial.println(shieldPins.adcbusyPin);
+	Serial.print("DACCS: ");
+	Serial.println(shieldPins.daccsPin);
+	Serial.print("DACLD: ");
+	Serial.println(shieldPins.dacldPin);
+}
+
+int analogShield::findPin(int expanderPin)
+{
+	for(int gpioPin = 12; gpioPin < 16; gpioPin++) //check GPIO PINS 12-16
+	{
+		if(verifyPin(expanderPin, gpioPin) == 1)
+		{
+			return gpioPin;
+		}
+	}
+	return 0;
+}
+
+int analogShield::verifyPin(int expanderPin, int gpioPin)
+{
+	#define VERIFICATION_COUNT 5
+	int count = 0;
+	for(int i = 0; i < VERIFICATION_COUNT; i++)
+	{
+		count += testPin(expanderPin, gpioPin);
+	}
+
+	if(count >= 4)
+	{
+		return 1;
+	}
+	return 0;
+
+}
+//returns 0 if shieldPins are not connected, 1 if they are
+int analogShield::testPin(int expanderPin, int gpioPin)
+{
+	pinMode(expanderPin, INPUT);
+	gpioSelectMode(gpioPin);
+	gpioPinMode(gpioPin, OUTPUT);
+	gpioWrite(gpioPin, HIGH);
+	delay(5);
+	if(digitalRead(expanderPin) == HIGH)
+	{
+		gpioWrite(gpioPin, LOW);
+		delay(5);
+		if(digitalRead(expanderPin) == LOW)
+		{
+			delay(5);
+			return 1;
+		}
+		return 0;
+	}
+	return 0;
+}
+
+//returns 0 or 1 for adcbusy, returns -1 for all other shieldPins, returns -2 for error.
+int analogShield::shieldPinReadWrite(int shieldPin, int value)
+{
+	if(shieldPin == adccs)
+	{
+		if(shieldPins.adccsPin == 0)
+		{
+			digitalWrite(adccs, value);
+		}
+		else
+		{
+			gpioWrite(shieldPins.adccsPin, value);
+		}
+		return -1;
+	}
+	if(shieldPin == adcbusy)
+	{
+		if(shieldPins.adcbusyPin == 0)
+		{
+			return digitalRead(adcbusy);
+		}
+		else
+		{
+			return gpioRead(shieldPins.adcbusyPin);
+		}
+	}
+	if(shieldPin == daccs)
+	{
+		if(shieldPins.daccsPin == 0)
+		{
+			digitalWrite(daccs, value);
+		}
+		else
+		{
+			gpioWrite(shieldPins.daccsPin, value);
+		}
+		return -1;
+	}
+	if(shieldPin == dacld)
+	{
+		if(shieldPins.dacldPin == 0)
+		{
+			digitalWrite(dacld, value);
+		}
+		else
+		{
+			gpioWrite(shieldPins.dacldPin, value);
+		}
+		return -1;
+	}
+
+	return -2;
+}
