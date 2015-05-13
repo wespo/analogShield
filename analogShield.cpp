@@ -120,7 +120,7 @@ analogShield analog;
 	    // SPI.setBitOrder(MSBFIRST);
      // 	SPI.setDataMode(SPI_MODE2);
      // 	SPI.setClockDivider(SPI_CLOCK_DIV128);
-    
+      	pinMode(adccs, INPUT);
 	}
 
 	
