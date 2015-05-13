@@ -610,6 +610,7 @@ int analogShield::configureShieldMode(int mode)
 			SPI.setBitOrder(MSBFIRST);
 			SPI.setDataMode(SPI_MODE2);
 			SPI.setClockDivider(SPI_CLOCK_DIV2);
+			SPI.setCSPin(1);
 			shieldMode = 1;
 			return 1; //changed mode
 		}
@@ -621,6 +622,7 @@ int analogShield::configureShieldMode(int mode)
 			SPI.setBitOrder(MSBFIRST);
 			SPI.setDataMode(SPI_MODE3);
 			SPI.setClockDivider(SPI_CLOCK_DIV8);
+			SPI.setCSPin(0);
 			shieldMode = 2;
 			return 1; //changed mode
 		}
