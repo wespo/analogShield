@@ -22,42 +22,40 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 */
 /************************************************************************/
-/*  Module Description: 				                                */
-/*									                                    */
+/*  Module Description:                                         */
+/*                                                      */
 /*  The passthrough routine will simply output the value read by the    */
 /*  analogShield input A0 and put the same value out on output D0.      */
 /*                                                                      */
 /*  Example: Attaching an analog signal to A0 will produce the same     */
 /*  analog signal on D0.                                                */
-/*									                                    */
+/*                                                      */
 /************************************************************************/
-/*  Revision History:							                        */
-/*									                                    */
+/*  Revision History:                                     */
+/*                                                      */
 /*  09/01/2013 (W. Esposito): created                                   */
 /*  05/28/2014 (MWingerson): Updated for ChipKIT and release            */
-/*						                                                */									
+/*  05/12/2015 (W. Esposito): refactor for DSP Shield                   */                                    */                  
 /************************************************************************/
 
 /************************************************************************/
-/*  Board Support:							                            */
+/*  Board Support:                                          */
 /*                                                                      */
-/*      Arduino UNO                                                     */
-/*      ChipKIT UNO32                                                   */
-/*      ChipKIT UC32                                                    */
+/*      DSP Shield                                                      */
 /*                                                                      */
 /************************************************************************/
 
-#include <analogShield.h>   //Include to use analog shield.
-#include <SPI.h>	//required for ChipKIT but does not affect Arduino
+#include "SPI.h"
+#include "analogShield.h"
+
+//note: for the DSP Shield, a jumper wire must be run from ADCCS to pin 10 of the arduino header
+//also, for optimal performance. run a jumper from one of the DSP Shield expander header pins 12-15 to DACCS
 
 void setup()
 {
-  //no setup
+  analog.begin(); 
 }
-
-unsigned int count = 0;
 void loop()
 {
-  count = analog.read(0);  //read in on port labeled 'IN0'
-  analog.write(0, count);  //write out the value on port labeled 'OUT0'
+  analog.write(0, analog.read(0));
 }
