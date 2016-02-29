@@ -118,8 +118,8 @@ analogShield analog;
  		/* Initialize DSP SPI peripheral */
  		SPI.setLoopBackMode(0);
 	    // SPI.setBitOrder(MSBFIRST);
-     // 	SPI.setDataMode(SPI_MODE2);
-     // 	SPI.setClockDivider(SPI_CLOCK_DIV128);
+     //  	SPI.setDataMode(SPI_MODE2);
+     //  	SPI.setClockDivider(SPI_CLOCK_DIV128);
       	pinMode(adccs, INPUT);
 	}
 
@@ -274,20 +274,68 @@ analogShield analog;
 **
 **
 */		
+	// int analogShield::signedRead(int channel, bool mode) {
+	// 	// initialize SPI:
+	// 	configureShieldMode(2);
+		
+	// 	// take the SS shieldPin low to select the chip, transfer the command, then bring the bit back high:
+	// 	shieldPinReadWrite(adccs, LOW);
+
+	// 	setChannelAndModeByte(channel, mode);
+		
+	// 	delayMicroseconds(10);
+
+	// 	//shieldPinReadWrite(adccs, HIGH);
+		
+	// 	//delayMicroseconds(5);
+
+	// 	//wait for busy signal to fall. If it lasts a while, try resending.
+	// 	unsigned long count = 0;
+	// 	//xfOff();
+	// 	// while(shieldPinReadWrite(adcbusy) == 1){
+	// 	// 	if (count > 1000)
+	// 	// 	{
+	// 	// 		xfOn();
+	// 	// 		//setChannelAndModeByte(channel, mode);
+	// 	// 		return 0;
+	// 	// 		// shieldPinReadWrite(adccs, HIGH);
+	// 	// 		// return 0;
+	// 	// 	}
+	// 	// 	delayMicroseconds(1);
+	// 	// 	count++;
+	// 	// } //wait for shieldPin 3 to == 0
+
+	// 	//Result ready. Read it in
+	// 	//shieldPinReadWrite(adccs, LOW);
+
+	// 	//collect data
+	// 	unsigned int readValue[2] = {};
+	// 	SPI.read(readValue, 2);
+	// 	delayMicroseconds(3);
+	// 	//release chip select
+	// 	shieldPinReadWrite(adccs, HIGH);
+
+	// 	//compile the result into a 16 bit integer.
+	// 	//int result = readValue[1];
+	// 	int result = ((readValue[0] << 8) & 0xFF00) | (readValue[1] & 0x00FF);
+	// 	return result;
+	// }
 	int analogShield::signedRead(int channel, bool mode) {
+
+		//delayMicroseconds(100);
 		// initialize SPI:
 		configureShieldMode(2);
 		
 		// take the SS shieldPin low to select the chip, transfer the command, then bring the bit back high:
-		//shieldPinReadWrite(adccs, LOW);
+		shieldPinReadWrite(adccs, LOW);
 
 		setChannelAndModeByte(channel, mode);
 		
 		//shieldPinReadWrite(adccs, HIGH);
 		
-		delayMicroseconds(5);
+		delayMicroseconds(1);
 
-		// //wait for busy signal to fall. If it lasts a while, try resending.
+		//wait for busy signal to fall. If it lasts a while, try resending.
 		// unsigned long count = 0;
 		// while(shieldPinReadWrite(adcbusy) == 1){
 		// 	if (count > 1000)
@@ -308,18 +356,18 @@ analogShield analog;
 		// if(count < 1000) //if read didn't time out.
 		// {
 		// 	count = 0;
-			// while(shieldPinReadWrite(adcbusy) == 1){
-			// 	if (count > 100)
-			// 	{
-			// 		//shieldPinReadWrite(adccs, HIGH);
-			// 		//return 0;
+		// 	while(shieldPinReadWrite(adcbusy) == 1){
+		// 		if (count > 100)
+		// 		{
+		// 			shieldPinReadWrite(adccs, HIGH);
+		// 			//return 0;
 
-			// 		xfOn();
-			// 		break;
-			// 	}
-			// 	count++;
-			// } //wait for shieldPin 3 to == 0
-		//}
+		// 			xfOn();
+		// 			break;
+		// 		}
+		// 		count++;
+		// 	} //wait for shieldPin 3 to == 0
+		// }
 		// else
 		// {
 		// 	xfOff();
@@ -329,14 +377,17 @@ analogShield analog;
 		//shieldPinReadWrite(adccs, LOW);
 
 		//collect data
-		unsigned int readValue[2] = {};
-		SPI.read(readValue, 2);
-
+		unsigned int readValue[3] = {};
+		SPI.read(readValue, 3);
+		// SPI.write(0,1);
+		// delayMicroseconds(10);
+		// SPI.read(readValue+1, 1);
 		//release chip select
-		//shieldPinReadWrite(adccs, HIGH);
+		shieldPinReadWrite(adccs, HIGH);
 		
 		//compile the result into a 16 bit integer.
-		int result = (readValue[0] << 8) | readValue[1];
+		//int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
+		int result = (readValue[0] << 14) + (readValue[1] << 6) + (readValue[1] >> 2);
 		return result;
 	}
 
@@ -609,7 +660,7 @@ int analogShield::configureShieldMode(int mode)
 			// initialize SPI:
 			SPI.setBitOrder(MSBFIRST);
 			SPI.setDataMode(SPI_MODE2);
-			SPI.setClockDivider(SPI_CLOCK_DIV2);
+			SPI.setClockDivider(SPI_CLOCK_DIV8);
 			SPI.setCSPin(1);
 			shieldMode = 1;
 			return 1; //changed mode
@@ -620,8 +671,8 @@ int analogShield::configureShieldMode(int mode)
 	{
 		if(shieldMode != 2){
 			SPI.setBitOrder(MSBFIRST);
-			SPI.setDataMode(SPI_MODE3);
-			SPI.setClockDivider(SPI_CLOCK_DIV8);
+			SPI.setDataMode(SPI_MODE3); //3
+			SPI.setClockDivider(SPI_CLOCK_DIV128); //128
 			SPI.setCSPin(0);
 			shieldMode = 2;
 			return 1; //changed mode
@@ -651,6 +702,7 @@ void analogShield::configureShieldPin(int shieldPin, int gpioPin)
 			shieldPins.dacldPin = gpioPin;
 			break;
 	}
+	setupPins();
 
 }
 void analogShield::configureShieldPins()
@@ -668,6 +720,11 @@ void analogShield::configureShieldPins()
 	shieldPins.daccsPin = findPin(daccs);
 	shieldPins.dacldPin = findPin(dacld);
 
+	setupPins();
+}
+
+void analogShield::setupPins()
+{
 	//configure shieldPins
 	if(shieldPins.adccsPin == 0) //using expander
 	{

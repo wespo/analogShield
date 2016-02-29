@@ -72,6 +72,7 @@
 		void setChannelAndModeByte(int channel, bool mode);
 		int configureShieldMode(int mode);
 		void configureShieldPins();
+		void setupPins();
 		int identifyPin();
 		int verifyPin(int expanderPin, int gpioPin);
 		int testPin(int expanderPin, int gpioPin);
