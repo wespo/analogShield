@@ -379,12 +379,14 @@ analogShield analog;
 		//collect data
 		unsigned int readValue[3] = {};
 		SPI.read(readValue, 3);
-		// SPI.write(0,1);
 		// delayMicroseconds(10);
 		// SPI.read(readValue+1, 1);
 		//release chip select
 		shieldPinReadWrite(adccs, HIGH);
-		
+
+		SPI.setClockDivider(SPI_CLOCK_DIV2);
+		unsigned int message[3] = {0};
+		SPI.write(message, 3);
 		//compile the result into a 16 bit integer.
 		//int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
 		int result = (readValue[0] << 14) + (readValue[1] << 6) + (readValue[1] >> 2);
