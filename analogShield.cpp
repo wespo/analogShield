@@ -388,8 +388,12 @@ analogShield analog;
 		unsigned int message[3] = {0};
 		SPI.write(message, 3);
 		//compile the result into a 16 bit integer.
-		//int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
+		#ifdef BOARD_DSPSHIELD_V1 //for C5535, a hack.
 		int result = (readValue[0] << 14) + (readValue[1] << 6) + (readValue[1] >> 2);
+		#else 
+		int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
+		#endif
+		
 		return result;
 	}
 
