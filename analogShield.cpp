@@ -209,7 +209,8 @@ analogShield analog;
 		else{
 			control = control | 0x04; //B00000100
 		}
-		SPI.write(&control, 1);
+		//SPI.write(&control, 1);
+		SPI.transfer(control);
 
 		return;
 	}
@@ -328,12 +329,10 @@ analogShield analog;
 		
 		// take the SS shieldPin low to select the chip, transfer the command, then bring the bit back high:
 		shieldPinReadWrite(adccs, LOW);
-
 		setChannelAndModeByte(channel, mode);
-		
 		//shieldPinReadWrite(adccs, HIGH);
+		delayMicroseconds(6);
 		
-		delayMicroseconds(1);
 
 		//wait for busy signal to fall. If it lasts a while, try resending.
 		// unsigned long count = 0;
@@ -378,20 +377,24 @@ analogShield analog;
 
 		//collect data
 		unsigned int readValue[3] = {};
-		SPI.read(readValue, 3);
+		for(int i=0; i < 3; i++)
+		{
+			readValue[i] = SPI.transfer(0x00);
+		}
+		//SPI.read(readValue, 3);
 		// delayMicroseconds(10);
 		// SPI.read(readValue+1, 1);
 		//release chip select
 		shieldPinReadWrite(adccs, HIGH);
 
-		SPI.setClockDivider(SPI_CLOCK_DIV2);
-		unsigned int message[3] = {0};
-		SPI.write(message, 3);
+		//SPI.setClockDivider(SPI_CLOCK_DIV2);
+		//SPI.write(message, 3);
 		//compile the result into a 16 bit integer.
 		#ifdef BOARD_DSPSHIELD_V1 //for C5535, a hack.
 		int result = (readValue[0] << 14) + (readValue[1] << 6) + (readValue[1] >> 2);
 		#else 
-		int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
+		//int result = (readValue[0] << 16) + (readValue[1]<< 8) + (readValue[2] >> 0);
+		int result = (int) (((0x007F & readValue[0]) << 9) & 0xFF00) + ((readValue[1]<< 1) & 0x01FE) + (((0x0080 & readValue[2]) >> 7) & 0x0001);
 		#endif
 		
 		return result;
@@ -666,7 +669,7 @@ int analogShield::configureShieldMode(int mode)
 			// initialize SPI:
 			SPI.setBitOrder(MSBFIRST);
 			SPI.setDataMode(SPI_MODE2);
-			SPI.setClockDivider(SPI_CLOCK_DIV8);
+			//SPI.setClockDivider(SPI_CLOCK_DIV8);
 			SPI.setCSPin(1);
 			shieldMode = 1;
 			return 1; //changed mode
@@ -677,9 +680,10 @@ int analogShield::configureShieldMode(int mode)
 	{
 		if(shieldMode != 2){
 			SPI.setBitOrder(MSBFIRST);
-			SPI.setDataMode(SPI_MODE3); //3
-			SPI.setClockDivider(SPI_CLOCK_DIV128); //128
+			SPI.setDataMode(SPI_MODE0); //3
+			//SPI.setClockDivider(SPI_CLOCK_DIV128); //128
 			SPI.setCSPin(0);
+			//unsigned int dummyVal = 0;
 			shieldMode = 2;
 			return 1; //changed mode
 		}
